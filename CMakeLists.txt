@@ -163,6 +163,7 @@ option(WITH_MEM_SRCDST "Include in-memory source/destination manager functions w
 boolean_number(WITH_MEM_SRCDST)
 option(WITH_SIMD "Include SIMD extensions, if available for this platform" TRUE)
 boolean_number(WITH_SIMD)
+option(WITH_LIBJPEG "Include standard libjpeg library" FALSE)
 option(WITH_TURBOJPEG "Include the TurboJPEG API library and associated test programs" TRUE)
 boolean_number(WITH_TURBOJPEG)
 
@@ -569,10 +570,20 @@ if(ENABLE_SHARED)
 endif()
 
 if(ENABLE_STATIC)
-  add_library(jpeg-static STATIC ${JPEG_SOURCES} $<TARGET_OBJECTS:simd>
+  add_library(mozjpeg-static STATIC ${JPEG_SOURCES} $<TARGET_OBJECTS:simd>
     ${SIMD_OBJS})
   if(NOT MSVC)
-    set_target_properties(jpeg-static PROPERTIES OUTPUT_NAME jpeg)
+    set_target_properties(mozjpeg-static PROPERTIES OUTPUT_NAME mozjpeg)
+  endif()
+endif()
+
+if(WITH_LIBJPEG)
+  if(ENABLE_STATIC)
+    add_library(jpeg-static STATIC ${JPEG_SOURCES} $<TARGET_OBJECTS:simd>
+      ${SIMD_OBJS})
+    if(NOT MSVC)
+      set_target_properties(jpeg-static PROPERTIES OUTPUT_NAME jpeg)
+    endif()
   endif()
 endif()
 
@@ -672,12 +683,12 @@ else()
 endif()
 
 if(ENABLE_STATIC)
-  add_executable(cjpeg-static cjpeg.c cdjpeg.c rdgif.c rdppm.c rdjpeg.c rdswitch.c
+  add_executable(mozcjpeg-static cjpeg.c cdjpeg.c rdgif.c rdppm.c rdjpeg.c rdswitch.c
     ${CJPEG_BMP_SOURCES})
-  set_property(TARGET cjpeg-static PROPERTY COMPILE_FLAGS ${COMPILE_FLAGS})
-  target_link_libraries(cjpeg-static jpeg-static)
+  set_property(TARGET mozcjpeg-static PROPERTY COMPILE_FLAGS ${COMPILE_FLAGS})
+  target_link_libraries(mozcjpeg-static mozjpeg-static)
   if(UNIX)
-    target_link_libraries(cjpeg-static m)
+    target_link_libraries(mozcjpeg-static m)
   endif()
 
   if(PNG_SUPPORTED)
@@ -697,30 +708,30 @@ if(ENABLE_STATIC)
     if (NOT APPLE)
       find_package(ZLIB REQUIRED)
     endif()
-    target_include_directories(cjpeg-static PUBLIC ${PNG_INCLUDE_DIR} ${ZLIB_INCLUDE_DIR})
-    target_link_libraries(cjpeg-static ${PNG_LIBRARY} ${ZLIB_LIBRARY})
+    target_include_directories(mozcjpeg-static PUBLIC ${PNG_INCLUDE_DIR} ${ZLIB_INCLUDE_DIR})
+    target_link_libraries(mozcjpeg-static ${PNG_LIBRARY} ${ZLIB_LIBRARY})
   endif()
 
-  add_executable(djpeg-static djpeg.c cdjpeg.c rdcolmap.c rdswitch.c wrgif.c
+  add_executable(mozdjpeg-static djpeg.c cdjpeg.c rdcolmap.c rdswitch.c wrgif.c
     wrppm.c ${DJPEG_BMP_SOURCES})
-  set_property(TARGET djpeg-static PROPERTY COMPILE_FLAGS ${COMPILE_FLAGS})
-  target_link_libraries(djpeg-static jpeg-static)
+  set_property(TARGET mozdjpeg-static PROPERTY COMPILE_FLAGS ${COMPILE_FLAGS})
+  target_link_libraries(mozdjpeg-static mozjpeg-static)
   if(UNIX)
-    target_link_libraries(djpeg-static m)
+    target_link_libraries(mozdjpeg-static m)
   endif()
 
-  add_executable(jpegtran-static jpegtran.c cdjpeg.c rdswitch.c transupp.c)
-  target_link_libraries(jpegtran-static jpeg-static)
+  add_executable(mozjpegtran-static jpegtran.c cdjpeg.c rdswitch.c transupp.c)
+  target_link_libraries(mozjpegtran-static mozjpeg-static)
   if(UNIX)
-    target_link_libraries(jpegtran-static m)
+    target_link_libraries(mozjpegtran-static m)
   endif()
 
-  set_property(TARGET jpegtran-static PROPERTY COMPILE_FLAGS "${USE_SETMODE}")
+  set_property(TARGET mozjpegtran-static PROPERTY COMPILE_FLAGS "${USE_SETMODE}")
 endif()
 
-add_executable(rdjpgcom rdjpgcom.c)
+add_executable(mozrdjpgcom rdjpgcom.c)
 
-add_executable(wrjpgcom wrjpgcom.c)
+add_executable(mozwrjpgcom wrjpgcom.c)
 
 
 ###############################################################################
@@ -1442,7 +1453,7 @@ if(WITH_TURBOJPEG)
 endif()
 
 if(ENABLE_STATIC)
-  install(TARGETS jpeg-static ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
+  install(TARGETS mozjpeg-static ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
   if(NOT ENABLE_SHARED)
     if(MSVC_IDE OR XCODE)
       set(DIR "${CMAKE_CURRENT_BINARY_DIR}/\${CMAKE_INSTALL_CONFIG_NAME}")
@@ -1458,7 +1469,7 @@ if(ENABLE_STATIC)
   endif()
 endif()
 
-install(TARGETS rdjpgcom wrjpgcom RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(TARGETS mozrdjpgcom mozwrjpgcom RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/README.ijg
   ${CMAKE_CURRENT_SOURCE_DIR}/README.md ${CMAKE_CURRENT_SOURCE_DIR}/example.txt
@@ -1474,19 +1485,37 @@ endif()
 
 if(UNIX OR MINGW)
   install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/cjpeg.1
-    ${CMAKE_CURRENT_SOURCE_DIR}/djpeg.1 ${CMAKE_CURRENT_SOURCE_DIR}/jpegtran.1
-    ${CMAKE_CURRENT_SOURCE_DIR}/rdjpgcom.1
-    ${CMAKE_CURRENT_SOURCE_DIR}/wrjpgcom.1
-    DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
+    DESTINATION ${CMAKE_INSTALL_MANDIR}/man1
+    RENAME mozcjpeg.1)
+  install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/djpeg.1
+    DESTINATION ${CMAKE_INSTALL_MANDIR}/man1
+    RENAME mozdjpeg.1)
+  install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/jpegtran.1
+    DESTINATION ${CMAKE_INSTALL_MANDIR}/man1
+    RENAME mozjpegtran.1)
+  install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/rdjpgcom.1
+    DESTINATION ${CMAKE_INSTALL_MANDIR}/man1
+    RENAME mozrdjpgcom.1)
+  install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/wrjpgcom.1
+    DESTINATION ${CMAKE_INSTALL_MANDIR}/man1
+    RENAME mozwrjpgcom.1)
 endif()
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/pkgscripts/libjpeg.pc
-    ${CMAKE_CURRENT_BINARY_DIR}/pkgscripts/libturbojpeg.pc
+
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/pkgscripts/mozjpeg.pc
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
+if(WITH_LIBJPEG)
+  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/pkgscripts/libjpeg.pc
+      DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
+endif()
+if(WITH_TURBOJPEG)
+  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/pkgscripts/libturbojpeg.pc
+      DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
+endif()
 
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/jconfig.h
   ${CMAKE_CURRENT_SOURCE_DIR}/jerror.h ${CMAKE_CURRENT_SOURCE_DIR}/jmorecfg.h
   ${CMAKE_CURRENT_SOURCE_DIR}/jpeglib.h
-  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/mozjpeg)
 
 include(cmakescripts/BuildPackages.cmake)
 

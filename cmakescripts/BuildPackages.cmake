@@ -177,6 +177,8 @@ configure_file(release/maketarball.in pkgscripts/maketarball)
 add_custom_target(tarball sh pkgscripts/maketarball
   SOURCES pkgscripts/maketarball)
 
+configure_file(release/libjpeg.pc.in pkgscripts/mozjpeg.pc @ONLY)
+
 configure_file(release/libjpeg.pc.in pkgscripts/libjpeg.pc @ONLY)
 
 configure_file(release/libturbojpeg.pc.in pkgscripts/libturbojpeg.pc @ONLY)

@@ -4,7 +4,7 @@ libdir=@CMAKE_INSTALL_FULL_LIBDIR@
 includedir=@CMAKE_INSTALL_FULL_INCLUDEDIR@
 
 Name: libjpeg
-Description: A SIMD-accelerated JPEG codec that provides the libjpeg API
+Description: MozJPEG's improvements of libjpeg-turbo providing the libjpeg API
 Version: @VERSION@
-Libs: -L${libdir} -ljpeg
-Cflags: -I${includedir}
+Libs: -L${libdir} -lmozjpeg
+Cflags: -I${includedir}/mozjpeg/
